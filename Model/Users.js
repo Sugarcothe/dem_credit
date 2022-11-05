@@ -21,10 +21,20 @@ const UserSchema = new mongoose.Schema(
       min: 6,
     },
     balance: {
-      type: Num,
+      type: Number,
       default: 0,
     },
-    
+    accountNumber: {
+      type: String,
+      required: true,
+      min: 3,
+      max: 15,
+      unique: true,
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
