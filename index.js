@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const usersRoute = require("./routes/users");
+const transactionsRoute = require("./routes/transactions");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const app = express();
@@ -19,6 +20,7 @@ app.use(helmet());
 
 // Route Endpoints
 app.use("/api/users", usersRoute);
+app.use("/api/transactions", transactionsRoute);
 
 mongoose.connect(process.env.MONGO_DB, (err) => {
   if (err) {
