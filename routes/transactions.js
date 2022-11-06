@@ -28,42 +28,32 @@ router.put(`/:id/fundAccount`, async (req, res) => {
 
 // P2P TRANSFER
 router.put(`/:id/transfer`, async (req, res) => {
-  const senderId = req.body.sender_walletId;
-  const receiverId = req.body.receiver_walletId;
+  const senderId = req.body.sender_acctNumber;
+  const receiverId = req.body.receiver_acctNumber;
   let amount = req.body.amount;
-  const pin = req.body.pin;
 
   if (senderId === receiverId)
     return res.status(400).json({ message: "Cannot transfer to same account" });
 
   //verify that the the ids exist
-  const sender = await User.findOne({ walletId: senderId });
-  const receiver = await User.findOne({ walletId: receiverId });
+  const sender = await Users.findOne({ accountNumber: senderId });
+  const receiver = await Users.findOne({ accountNumber: receiverId });
 
   if (!sender || !receiver)
     return res.status(400).json({ message: "Invalid sender or receiver Id" });
 
-  //validate pin
-  const isMatch = await bcrypt.compare(pin, sender.pin);
-
   //ensure sender has enough balance to make this transaction
   let senderBalance = sender.balance;
-  if (isMatch && senderBalance >= amount) {
-    //send otp
-    sendOtp({
-      walletId: senderId,
-      phoneNumber: sender.phoneNumber,
-    });
+  if (senderBalance >= amount) {
     //save the unfulfilled transaction to transaction table
     const transactionDetails = await Transaction.create({
-      sender_walletId: senderId,
-      receiver_walletId: receiverId,
+      sender_acctNumber: senderId,
+      receiver_acctNumber: receiverId,
       amount,
     });
 
     res.status(200).json({
-      message:
-        "Please enter the otp sent to your mobile number to complete this transaction",
+      message: "🟢 Transaction successful...",
       transactionDetails,
     });
   } else {
@@ -71,6 +61,10 @@ router.put(`/:id/transfer`, async (req, res) => {
       message: "You don't have enough funds to complete this transaction",
     });
   }
+
+
+
+  
 });
 
 module.exports = router;
