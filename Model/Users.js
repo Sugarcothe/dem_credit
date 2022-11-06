@@ -22,11 +22,12 @@ const UserSchema = new mongoose.Schema(
     },
     balance: {
       type: Number,
-      default: 0,
+      default: 0.0,
     },
     accountNumber: {
       type: String,
       unique: true,
+      trim: true,
     },
     isAdmin: {
       type: Boolean,
