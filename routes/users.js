@@ -5,6 +5,7 @@ const Users = require("../Model/Users");
 
 
 
+// CREATE ACCOUNT
 router.post("/signup", async (req, res) => {
   const { username, email, password } = req.body;
     const accountNumber = randomize("0", 10);
@@ -34,7 +35,7 @@ router.post("/signup", async (req, res) => {
       });
 
       res.status(201).json({
-        message: "new user created",
+        message: "🟢 New user created",
         user: {
           id: newUser._id,
           username: newUser.username,
@@ -44,41 +45,15 @@ router.post("/signup", async (req, res) => {
     } catch (err) {
       return res
         .status(500)
-        .json({ message: `Error while creating account: ${err}` });
+        .json({ message: `🔴 Error while creating account: ${err}` });
     }
   
 })
 
-// USER CREATE ACCOUNT
-// router.post("/signup", async (req, res) => {
-//   try {
-//     //hash password
-//     const salt = await bcrypt.genSalt(10);
-//     const hashedPassword = await bcrypt.hash(req.body.password, salt);
-//     const accountNumber = randomize("A0", 10);
-//     // create new user
-//     const newUser = await new User({
-//       username: req.body.username,
-//       email: req.body.email,
-//       password: hashedPassword,
-      
-//     });
-//     req.body.accountNumber = accountNumber;
-
-    
-
-//     // save user and return response
-//     const user = await newUser.save();
-//     res.status(200).json(user);
-//   } catch (err) {
-//     res.status(500).json(err);
-//   }
-// });
-
 // LOGIN USER
 router.post("/login", async (req, res) => {
   try {
-    const user = await User.findOne({ accountNumber: req.body.accountNumber });
+    const user = await Users.findOne({ accountNumber: req.body.accountNumber });
     !user && res.status(404).json("🔴 Account not found");
 
     const validPassword = await bcrypt.compare(
@@ -96,7 +71,7 @@ router.post("/login", async (req, res) => {
 // ACCOUNT BALANCE
 router.get("/:id/balance", async (req, res) => {
   try {
-    const userInfo = await User.findById(req.params.id);
+    const userInfo = await Users.findById(req.params.id);
     res.status(200).json(`🟢 Your account balance is $${userInfo.balance}`);
   } catch (err) {
     res.status(500).json(err);
@@ -106,7 +81,7 @@ router.get("/:id/balance", async (req, res) => {
 // FUND ACCOUNT
 router.put(`/:id/fundAccount`, async (req, res) => {
   try {
-    await User.findByIdAndUpdate(req.params.id, {
+    await Users.findByIdAndUpdate(req.params.id, {
       $inc: req.body,
     });
     res.status(200).json(`🟢 Account funded Succesfully`);
@@ -117,8 +92,49 @@ router.put(`/:id/fundAccount`, async (req, res) => {
 
 // P2P TRANSFER
 router.put(`/:id/transfer`, async (req, res) => {
-  const user = User.findById({ _id: id });
-  await User.findBy;
+  const senderId = req.body.sender_walletId;
+  const receiverId = req.body.receiver_walletId;
+  let amount = req.body.amount;
+  const pin = req.body.pin;
+
+  if (senderId === receiverId)
+    return res.status(400).json({ message: "Cannot transfer to same account" });
+
+  //verify that the the ids exist
+  const sender = await User.findOne({ walletId: senderId });
+  const receiver = await User.findOne({ walletId: receiverId });
+
+  if (!sender || !receiver)
+    return res.status(400).json({ message: "Invalid sender or receiver Id" });
+
+  //validate pin
+  const isMatch = await bcrypt.compare(pin, sender.pin);
+
+  //ensure sender has enough balance to make this transaction
+  let senderBalance = sender.balance;
+  if (isMatch && senderBalance >= amount) {
+    //send otp
+    sendOtp({
+      walletId: senderId,
+      phoneNumber: sender.phoneNumber,
+    });
+    //save the unfulfilled transaction to transaction table
+    const transactionDetails = await Transaction.create({
+      sender_walletId: senderId,
+      receiver_walletId: receiverId,
+      amount,
+    });
+
+    res.status(200).json({
+      message:
+        "Please enter the otp sent to your mobile number to complete this transaction",
+      transactionDetails,
+    });
+  } else {
+    res.status(400).json({
+      message: "You don't have enough funds to complete this transaction",
+    });
+  }
 });
 
 module.exports = router;

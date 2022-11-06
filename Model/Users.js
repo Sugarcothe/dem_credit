@@ -26,7 +26,7 @@ const UserSchema = new mongoose.Schema(
     },
     accountNumber: {
       type: String,
-      unique: true
+      unique: true,
     },
     isAdmin: {
       type: Boolean,
