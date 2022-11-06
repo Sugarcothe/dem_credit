@@ -26,10 +26,7 @@ const UserSchema = new mongoose.Schema(
     },
     accountNumber: {
       type: String,
-      required: true,
-      min: 3,
-      max: 15,
-      unique: true,
+      unique: true
     },
     isAdmin: {
       type: Boolean,
