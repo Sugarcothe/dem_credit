@@ -28,43 +28,60 @@ router.put(`/:id/fundAccount`, async (req, res) => {
 
 // P2P TRANSFER
 router.put(`/:id/transfer`, async (req, res) => {
-  const senderId = req.body.sender_acctNumber;
-  const receiverId = req.body.receiver_acctNumber;
+  // request for both the account of the sender/receriver/amount
+  const senderAcct = req.body.accountNumber;
+  const receiverAcct = req.body.accountNumber;
   let amount = req.body.amount;
 
-  if (senderId === receiverId)
+  //   checks if the sending is sending to his account
+  if (senderAcct === receiverAcct)
     return res.status(400).json({ message: "Cannot transfer to same account" });
 
-  //verify that the the ids exist
-  const sender = await Users.findOne({ accountNumber: senderId });
-  const receiver = await Users.findOne({ accountNumber: receiverId });
+  //verify that the the account number exist
+  const sender = await Users.findOne({ accountNumber: senderAcct });
+  const receiver = await Users.findOne({ accountNumber: receiverAcct });
 
   if (!sender || !receiver)
     return res.status(400).json({ message: "Invalid sender or receiver Id" });
 
   //ensure sender has enough balance to make this transaction
   let senderBalance = sender.balance;
+  let receiverBalance = receiver.balance;
+
+//   checks if sender have enough balance to send
   if (senderBalance >= amount) {
-    //save the unfulfilled transaction to transaction table
-    const transactionDetails = await Transaction.create({
-      sender_acctNumber: senderId,
-      receiver_acctNumber: receiverId,
+    //save the unfulfilled transaction to transaction amount
+    const transactionDetails = await Users.create({
+      senderAcct: senderAcct,
+      receiverAcct: receiverAcct,
       amount,
     });
 
-    res.status(200).json({
-      message: "🟢 Transaction successful...",
-      transactionDetails,
-    });
+    if (senderBalance >= amount) {
+      senderBalance -= amount;
+      receiverBalance += amount;
+
+      await Users.findOneAndUpdate(
+        { senderAcct: Users.accountNumber },
+        { balance: senderBalance }
+      );
+      await Users.findOneAndUpdate(
+        { receiverAcct: Users.accountNumber },
+        { balance: receiverBalance }
+      );
+      await Users.findOneAndUpdate({ status: "completed" });
+      res.status(200).json({
+        message: "🟢 Transaction successful...",
+        transactionDetails,
+      });
+    } else {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
   } else {
     res.status(400).json({
       message: "You don't have enough funds to complete this transaction",
     });
   }
-
-
-
-  
 });
 
 module.exports = router;

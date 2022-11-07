@@ -33,6 +33,17 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    amount: { 
+      type: Number, 
+      required: 
+      true, 
+      default: 0.0 
+    },
+    status: {
+      type: String,
+      default: "pending",
+      enum: ["pending", "completed"],
+    }
   },
   { timestamps: true }
 );
