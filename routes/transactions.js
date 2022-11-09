@@ -48,7 +48,7 @@ router.put(`/:id/transfer`, async (req, res) => {
   let senderBalance = sender.balance;
   let receiverBalance = receiver.balance;
 
-//   checks if sender have enough balance to send
+  //   checks if sender have enough balance to send
   if (senderBalance >= amount) {
     //save the unfulfilled transaction to transaction amount
     const transactionDetails = await Users.create({
