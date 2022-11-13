@@ -2,7 +2,7 @@ const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const randomize = require("randomatic");
 const Users = require("../Model/Users");
-const Transaction = require("../Model/Transactions");
+const Transactions = require("../Model/Transactions");
 
 // ACCOUNT BALANCE
 router.get("/:id/balance", async (req, res) => {
@@ -28,55 +28,81 @@ router.put(`/:id/fundAccount`, async (req, res) => {
 
 // P2P TRANSFER
 router.put(`/:id/transfer`, async (req, res) => {
-  // request for both the account of the sender/receriver/amount
-  const senderAcct = req.body.accountNumber;
-  const receiverAcct = req.body.accountNumber;
+  const senderId = req.body.sender_acctNumber;
+  const receiverId = req.body.receiver_acctNumber;
   let amount = req.body.amount;
 
-  //   checks if the sending is sending to his account
-  if (senderAcct === receiverAcct)
+  if (senderId === receiverId)
     return res.status(400).json({ message: "Cannot transfer to same account" });
 
-  //verify that the the account number exist
-  const sender = await Users.findOne({ accountNumber: senderAcct });
-  const receiver = await Users.findOne({ accountNumber: receiverAcct });
+  //verify that the the ids exist
+  const sender = await Users.findOne({ walletId: senderId });
+  const receiver = await Users.findOne({ walletId: receiverId });
 
   if (!sender || !receiver)
     return res.status(400).json({ message: "Invalid sender or receiver Id" });
 
   //ensure sender has enough balance to make this transaction
   let senderBalance = sender.balance;
-  let receiverBalance = receiver.balance;
-
-  //   checks if sender have enough balance to send
   if (senderBalance >= amount) {
-    //save the unfulfilled transaction to transaction amount
-    const transactionDetails = await Users.create({
-      senderAcct: senderAcct,
-      receiverAcct: receiverAcct,
+    //save the unfulfilled transaction to transaction table
+    const transactionDetails = await Transactions.create({
+      sender_acctNumber: senderId,
+      receiver_acctNumber: receiverId,
       amount,
     });
 
-    if (senderBalance >= amount) {
-      senderBalance -= amount;
-      receiverBalance += amount;
+    res.status(200).json({
+      message:
+        "Please enter the otp sent to your mobile number to complete this transaction",
+      transactionDetails,
+    });
+  } else {
+    res.status(400).json({
+      message: "You don't have enough funds to complete this transaction",
+    });
+  }
+});
 
-      await Users.findOneAndUpdate(
-        { senderAcct: Users.accountNumber },
-        { balance: senderBalance }
-      );
-      await Users.findOneAndUpdate(
-        { receiverAcct: Users.accountNumber },
-        { balance: receiverBalance }
-      );
-      await Users.findOneAndUpdate({ status: "completed" });
-      res.status(200).json({
-        message: "🟢 Transaction successful...",
-        transactionDetails,
-      });
-    } else {
-      return res.status(400).json({ message: "Insufficient balance" });
-    }
+// complete transaction
+router.put("/:id/completeTransfer", async (req, res) => {
+  const transId = req.body;
+
+  // get amount transacted
+  const transaction = await Transactions.findById(transId);
+
+  const sender = await Users.findOne({
+    accountNumber: transaction.sender_acctNumber,
+  });
+  const receiver = await Users.findOne({
+    accountNumber: transaction.receiver_acctNumber,
+  });
+
+  //  get sender and receiver balance
+  let senderBalance = sender.balance;
+  let receiverBalance = receiver.balance;
+
+  // Checks the senders balance and send
+  if (senderBalance >= amount) {
+    senderBalance -= amount;
+    receiverBalance += amount;
+
+    await User.findOneAndUpdate(
+      { accountNumber: transaction.sender_acctNumber },
+      { balance: senderBalance }
+    );
+    await User.findOneAndUpdate(
+      { accountNumber: transaction.receiver_acctNumber },
+      { balance: receiverBalance }
+    );
+    await Transaction.findOneAndUpdate(
+      { _id: transId },
+      { status: "completed" }
+    );
+
+    res.status(200).json({
+      message: "Fund transfer completed successfully!",
+    });
   } else {
     res.status(400).json({
       message: "You don't have enough funds to complete this transaction",
