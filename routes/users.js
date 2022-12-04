@@ -35,7 +35,7 @@ router.post("/signup", async (req, res) => {
       });
 
       res.status(201).json({
-        message: "🟢 New user created",
+        message: "🟢 New user created, welcome friend",
         user: {
           id: newUser._id,
           username: newUser.username,
